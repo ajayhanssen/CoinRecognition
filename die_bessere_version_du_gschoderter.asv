@@ -24,16 +24,17 @@ Hsc = homography2d(x1, x2);
 persp = imTrans(img,Hsc);
 
 BW = rgb2gray(persp);
-BW = edge(BW,'canny');
-[H,T,R] = hough(BW);
-P  = houghpeaks(H,5,'threshold',ceil(0.3*max(H(:))));
-x = T(P(:,2)); y = R(P(:,1));
+BW = imgaussfilt(BW, 8);
+%BW = edge(BW,'method', 'canny', 'threshold', [50 150]);
+BW = edge(BW, "canny", 0.2);
 figure(1)
-plot(x,y,'s','color','white');
+imshow(BW)
 
-figure(2)
-tiledlayout(1,2)
-nexttile
-imshow(img)
-nexttile
-imshow(persp)
+
+
+% figure(2)
+% tiledlayout(1,2)
+% nexttile
+% imshow(img)
+% nexttile
+% imshow(persp)

@@ -6,7 +6,7 @@ dina4 = [210,297];
 addpath(genpath('Vorlagen/MatlabFns/Projective'));
 
 img = imread("images/coins1.jpg");
-persp = img;
+BW = rgb2gray(img);
 
 % origin points
 x1 = [2000 3696 2216 128;
@@ -21,11 +21,13 @@ x2 = [ 20 3840 3840  20;
 Hsc = homography2d(x1, x2);
 
 % perspective transformed image
-persp = imTrans(img,Hsc);
+persp = imTrans(BW,Hsc);
 
-BW = rgb2gray(persp);
 BW = imgaussfilt(BW, 8);
-BW = edge(BW,'canny');
+BW = edge(BW, "sobel");
+
+%BW = imdilate(BW);
+
 figure(1)
 imshow(BW)
 
