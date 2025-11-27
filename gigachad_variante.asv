@@ -4,7 +4,7 @@ addpath(genpath('Vorlagen/MatlabFns/Projective'));
 
 dina4 = [210,297];
 
-img = imread("images/coins3.jpeg");
+img = imread("images/coins1.jpg");
 gray = rgb2gray(img);
 
 edges = edge(gray, 'canny', [0.02, 0.3]);
@@ -79,39 +79,32 @@ imshow(persp)
 
 
 %% detect coins
-coins = [0.01, 0.02, 0.1, 0.05, 0.2, 1.0, 0.5, 2.0];
+coin = [0.01, 0.02, 0.1, 0.05, 0.2, 1.0, 0.5, 2.0];
 % 2 pixel per milli -> ./2  für radius mal 2 für mm Konversion
 radiusse = [16.25, 18.75, 19.75, 21.25, 22.25, 23.25, 24.25, 25.75];
 
 radiusse
-lower = radiusse - [2, diff(radiusse)/2];
-upper = radiusse + [diff(radiusse)/2, 2];
+lower = radiusse - [2, diff(radiusse)/2]
+upper = radiusse + [diff(radiusse)/2, 2]
 
 gray_p = rgb2gray(persp);
 
 [centers,radii] = imfindcircles(gray_p,[15 30],ObjectPolarity="dark", Sensitivity=0.9);
-radii = radii - 0.2;
 
 figure
 imshow(gray_p)
 
 h = viscircles(centers,radii);
 
-res = zeros(length(radii),1);
+res = 0
 for i = 1:length(radii)
     coin = radii(i);
-
     for k = 1:length(radiusse)
-
-        if any((coin < upper(k))) && any((coin >= lower))
-            res(i) = coins(k);
-            break
-        end
+        if coin < upper(k) && coin >= lower
+            res = coins(k)
     end
-
 end
 
-res
 % coin = radii(i).*ones(length(radii),1);
 %     res = lower < coin;
 %     res = coin <= upper
