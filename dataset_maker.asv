@@ -1,0 +1,53 @@
+close all
+clear all
+
+source = "dataset_orig";
+destination = "dataset_final";
+
+D = dir(source.append("\*"));
+for i = 3:length(D)
+    folder = D(i);
+    path = sprintf("%s\\%s\\*", folder.folder, folder.name);
+    A = dir(path);
+    for j = 3:length(A)
+        impath = A(j).folder;
+        impath = sprintf("%s\\%s", impath, A(j).name);
+        img = imread(impath);
+        imsize = size(img);
+        as = imsize/3;
+        img = img(as:as*2,as:as*2,:);
+
+        gray = rgb2gray(img);
+        %imshow(gray)
+        
+        [centers,radii] = imfindcircles(gray,[50 300],ObjectPolarity="dark", Sensitivity=0.94);
+        %h = viscircles(centers,radii);
+        if isempty(centers)
+            %continue
+            sprintf("Image %s couldnt be resolved", impath)
+            continue
+            snipsize = size(img);
+            centers = [snipsize(1)/2, snipsize(2)/2];
+        end
+
+        imshow(img)
+        %h = drawcircle('Center', centers(1,:), 'Radius', radii(1));
+        h = circles2mask(centers(1,:), radii(1), [imsize(1) imsize(2)]);
+        bw = createMask(h);
+        img = img.*repmat(uint8(bw), [1 1 3]);
+
+        cx = centers(1,1);
+        cy = centers(1,2);
+
+        padding = 250;
+        img = img(cy-padding:cy+padding,cx-padding:cx+padding,:);
+
+        img = imresize(img, [227 227]);
+
+        imshow(img)
+        outpath = replace(impath, source, destination);
+        imwrite(img, outpath)
+        break
+    end
+    break
+end

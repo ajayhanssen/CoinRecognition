@@ -84,6 +84,9 @@ imshow(persp)
 
 
 %% detect coins
+%load("nnet_google.mat")
+load("squeezenet.mat")
+
 coins = [0.01, 0.02, 0.1, 0.05, 0.2, 1.0, 0.5, 2.0];
 % 2 pixel per milli -> ./2  für radius mal 3 für mm Konversion
 radiusse = [16.25, 18.75, 19.75, 21.25, 22.25, 23.25, 24.25, 25.75].*3./2;
@@ -94,42 +97,34 @@ upper = radiusse + [diff(radiusse)/2, 2];
 
 gray_p = rgb2gray(persp);
 
-[centers,radii] = imfindcircles(gray_p,[30 50],ObjectPolarity="dark", Sensitivity=0.9);
+[centers, radii] = imfindcircles(gray_p,[30 50], ...
+    ObjectPolarity="dark", ...
+    Sensitivity=0.9);
+
 radii = radii - 0.2;
 
-figure
-imshow(persp)
+figure; imshow(persp);
+viscircles(centers,radii);
 
-h = viscircles(centers,radii);
+[h, w, ~] = size(persp);
 
-res = zeros(length(radii),1);
 for i = 1:length(radii)
-    coin = radii(i);
 
-    for k = 1:length(radiusse)
+    cx = round(centers(i,1));
+    cy = round(centers(i,2));
+    padding = round(radii(i) + 10);
 
-        if coin >= lower(k) && coin < upper(k)
-            res(i) = coins(k);
-            break
-        end
-    end
+    x1 = max(cx - padding, 1);
+    x2 = min(cx + padding, w);
+    y1 = max(cy - padding, 1);
+    y2 = min(cy + padding, h);
+
+    region = persp(y1:y2, x1:x2, :);
+    region = im2single(imresize(region, [224 224]));
+    %imshow(region)
+    scores = predict(net, region)
+    label = scores2label(scores, classNames);
+
+    fprintf("Münze %d: %s\n", i, label);
 
 end
-
-res
-
-labview = rgb2lab(persp);
-a = labview(:,:,2);
-b = labview(:,:,3);
-
-h = drawcircle('Center', centers(1,:), 'Radius', radii(2))
-bw = createMask(h);
-
-%Inew = persp.*repmat(uint8(bw),[1,1,3]);
-aeuro = a.*double(bw);
-beuro = b.*double(bw);
-mean_a = mean2(aeuro)
-mean_b = mean2(aeuro)
-
-figure
-imshow(aeuro)
