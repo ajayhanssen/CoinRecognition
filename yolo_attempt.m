@@ -1,6 +1,6 @@
-imds = imageDatastore("archive\images\");
+imds = imageDatastore("archive/images/");
 
-groundim = imread("archive\images\001.jpg");
+groundim = imread("archive/images\001.jpg");
 imgH = size(groundim, 1);
 imgW = size(groundim, 2);
 
@@ -110,3 +110,7 @@ function data = preprocessData(data,targetSize)
         data(num,1:2) = {I,bboxes};
     end
 end
+
+%% Test
+I = imread("untitled.jpg");
+[bboxes, scores, labels] = detect(trainedDetector, I)
