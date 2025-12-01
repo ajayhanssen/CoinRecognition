@@ -4,7 +4,7 @@ addpath(genpath('Vorlagen/MatlabFns/Projective'));
 
 dina4 = [210,297];
 
-img = imread("images/coins4.jpeg");
+img = imread("images/coins3.jpeg");
 gray = rgb2gray(img);
 
 edges = edge(gray, 'canny', [0.02, 0.3]);
@@ -63,7 +63,6 @@ if len1 < len2
     imsize = flip(imsize);
 end
 
-
 src = [l_poly(1:4,2), l_poly(1:4,1)];
 dst = [10,10;
        imsize(2), 10;
@@ -88,48 +87,68 @@ coins = [0.01, 0.02, 0.1, 0.05, 0.2, 1.0, 0.5, 2.0];
 % 2 pixel per milli -> ./2  für radius mal 3 für mm Konversion
 radiusse = [16.25, 18.75, 19.75, 21.25, 22.25, 23.25, 24.25, 25.75].*3./2;
 
-radiusse
 lower = radiusse - [2, diff(radiusse)/2];
 upper = radiusse + [diff(radiusse)/2, 2];
 
 gray_p = rgb2gray(persp);
 
-[centers,radii] = imfindcircles(gray_p,[30 50],ObjectPolarity="dark", Sensitivity=0.9);
-radii = radii - 0.2;
-
-figure
-imshow(persp)
-
-h = viscircles(centers,radii);
+[centers,radii] = imfindcircles(gray_p,[25 50],ObjectPolarity="dark", Sensitivity=0.9);
+masks = circles2mask(centers, radii, imsize);
+persp_masked = persp.*repmat(uint8(masks),[1 1 3]);
 
 res = zeros(length(radii),1);
+persp_text = persp;
 for i = 1:length(radii)
-    coin = radii(i);
+    r = radii(i);
+    c = centers(i,:);
+    
+    % masken erzeugen
+    msk_outer = circles2mask(c,r, imsize);
+    msk_inner = circles2mask(c, r*0.7, imsize);
+    msk_ring = msk_outer & ~msk_inner;
 
-    for k = 1:length(radiusse)
+    outer_ring = persp.*repmat(uint8(msk_ring), [1 1 3]);
+    inner_circle = persp.*repmat(uint8(msk_inner), [1 1 3]);
 
-        if coin >= lower(k) && coin < upper(k)
-            res(i) = coins(k);
-            break
+    lab_ring = rgb2lab(outer_ring);
+    lab_circle = rgb2lab(inner_circle);
+
+    b_ring = mean2(lab_ring(:,:,3));
+    b_circle = mean2(lab_circle(:,:,3));
+    
+    % debug only
+    fprintf("b-Ring: %f, b-Kreis innen: %f, Radius Münze: %f\n", b_ring, b_circle, r)
+    
+    if (b_circle - b_ring) > 0.015 && r > lower(7) % 2 Euro: diff in color & größer als 50 cent lower
+        res(i) = 2.0;
+    elseif (b_circle - b_ring < -0.015) && r > lower(5) && r < upper(7) % 1 Euro
+        res(i) = 1.0;
+    elseif (b_circle > 0.03) % kein Kupfer (?)
+        if (r > radiusse(6)) % 50 cent
+            res(i) = 0.5;
+        elseif (r <= radiusse(6) && r >= lower(5)) % 20 cent
+            res(i) = 0.2;
+        else % 10 cent
+            res(i) = 0.1;
+        end
+    else % Kupfer (?)
+        if (r > lower(3)) % 5 cent
+            res(i) = 0.05;
+        elseif (r > lower(2) && r < upper(2)) % 2 cent
+            res(i) = 0.02;
+        else % 1 cent
+            res(i) = 0.01;
         end
     end
-
+    
+    persp_text = insertText(persp_text, centers(i,:)+[radii(i),0], res(i), FontSize=18,TextBoxColor='y', ...
+    BoxOpacity=0.4,TextColor="white");
+    %figure
+    %imshow(outer_ring)
+    
 end
 
-res
-
-labview = rgb2lab(persp);
-a = labview(:,:,2);
-b = labview(:,:,3);
-
-h = drawcircle('Center', centers(1,:), 'Radius', radii(2))
-bw = createMask(h);
-
-%Inew = persp.*repmat(uint8(bw),[1,1,3]);
-aeuro = a.*double(bw);
-beuro = b.*double(bw);
-mean_a = mean2(aeuro)
-mean_b = mean2(aeuro)
-
 figure
-imshow(aeuro)
+imshow(persp_text)
+
+h = viscircles(centers,radii);
