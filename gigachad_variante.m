@@ -4,7 +4,7 @@ addpath(genpath('Vorlagen/MatlabFns/Projective'));
 
 dina4 = [210,297];
 
-img = imread("images/coins5.jpeg");
+img = imread("images/coins6.jpeg");
 gray = rgb2gray(img);
 
 edges = edge(gray, 'canny', [0.02, 0.3]);
@@ -83,12 +83,6 @@ imshow(persp)
 
 
 %% detect coins
-coins = [0.01, 0.02, 0.1, 0.05, 0.2, 1.0, 0.5, 2.0];
-% 2 pixel per milli -> ./2  für radius mal 3 für mm Konversion
-radiusse = [16.25, 18.75, 19.75, 21.25, 22.25, 23.25, 24.25, 25.75].*3./2;
-
-lower = radiusse - [2, diff(radiusse)/2];
-upper = radiusse + [diff(radiusse)/2, 2];
 
 gray_p = rgb2gray(persp);
 
@@ -98,13 +92,32 @@ persp_masked = persp.*repmat(uint8(masks),[1 1 3]);
 
 res = zeros(length(radii),1);
 persp_text = persp;
+
+coins = [0.01, 0.02, 0.1, 0.05, 0.2, 1.0, 0.5, 2.0];
+% 2 pixel per milli -> ./2  für radius mal 3 für mm Konversion
+radiusse = [16.25, 18.75, 19.75, 21.25, 22.25, 23.25, 24.25, 25.75].*3./2;
+lower = radiusse - [2, diff(radiusse)/2];
+
+scale_fac = 1.0;
+sorted_radii = sort(radii,'descend');
+if sorted_radii(1) > lower(8)
+    scale_fac = sorted_radii(1)/radiusse(8);
+    radiusse = radiusse.*scale_fac;
+end
+lower = radiusse - [2, diff(radiusse)/2];
+upper = radiusse + [diff(radiusse)/2, 2];
+
+
+b_avg = 0;
+b_std = [];
+num_considered = 0;
 for i = 1:length(radii)
-    r = radii(i);
-    c = centers(i,:);
+    f(i).r = radii(i);
+    f(i).c = centers(i,:);
     
     % masken erzeugen
-    msk_outer = circles2mask(c,r, imsize);
-    msk_inner = circles2mask(c, r*0.7, imsize);
+    msk_outer = circles2mask(f(i).c,f(i).r, imsize);
+    msk_inner = circles2mask(f(i).c, f(i).r*0.7, imsize);
     msk_ring = msk_outer & ~msk_inner;
 
     outer_ring = persp.*repmat(uint8(msk_ring), [1 1 3]);
@@ -113,35 +126,54 @@ for i = 1:length(radii)
     lab_ring = rgb2lab(outer_ring);
     lab_circle = rgb2lab(inner_circle);
 
-    b_ring = mean2(lab_ring(:,:,3));
-    b_circle = mean2(lab_circle(:,:,3));
+    f(i).b_ring = mean2(lab_ring(:,:,3));
+    f(i).b_circle = mean2(lab_circle(:,:,3));
+
+    if abs(f(i).b_circle - f(i).b_ring) < 0.015
+        b_avg = b_avg + f(i).b_circle;
+        b_std(i) = f(i).b_circle;
+        num_considered = num_considered + 1;
+    end
+
+end
+b_avg = b_avg/num_considered % durchs. b-wert des in kreises
+b_std = std(b_std)
+
+b_gw = 0.03;
+if num_considered == 1
+    b_gw = 0.03;
+elseif b_std > 0.01
+    b_gw = b_avg;
+end
+
+for i = 1:length(radii)
     
     % debug only
-    fprintf("b-Ring: %f, b-Kreis innen: %f, Radius Münze: %f\n", b_ring, b_circle, r)
+    fprintf("b-Ring: %f, b-Kreis innen: %f, Radius Münze: %f\n", f(i).b_ring, f(i).b_circle, f(i).r)
     
-    if (b_circle - b_ring) > 0.015 && r > lower(7) % 2 Euro: diff in color & größer als 50 cent lower
+    if (f(i).b_circle - f(i).b_ring) > 0.015 && f(i).r > lower(7) % 2 Euro: diff in color & größer als 50 cent lower
         res(i) = 2.0;
-    elseif (b_circle - b_ring < -0.015) && r > lower(5) && r < upper(7) % 1 Euro
+    elseif (f(i).b_circle - f(i).b_ring < -0.015) && f(i).r > lower(5) && f(i).r < upper(7) % 1 Euro
         res(i) = 1.0;
-    elseif (b_circle > 0.03) % kein Kupfer (?)
-        if (r > radiusse(6)) % 50 cent
+    elseif (f(i).b_circle > b_gw) % kein Kupfer (?)
+        if (f(i).r > radiusse(6)) % 50 cent
             res(i) = 0.5;
-        elseif (r <= radiusse(6) && r >= lower(5)) % 20 cent
+        elseif (f(i).r <= radiusse(6) && f(i).r >= lower(5)) % 20 cent
             res(i) = 0.2;
         else % 10 cent
             res(i) = 0.1;
         end
     else % Kupfer (?)
-        if (r > lower(3)) % 5 cent
+        if (f(i).r > lower(3)) % 5 cent
             res(i) = 0.05;
-        elseif (r > lower(2) && r < upper(2)) % 2 cent
+        elseif (f(i).r > lower(2) && f(i).r < upper(2)) % 2 cent
             res(i) = 0.02;
         else % 1 cent
             res(i) = 0.01;
         end
     end
     
-    persp_text = insertText(persp_text, centers(i,:)+[radii(i),0], res(i), FontSize=18,TextBoxColor='y', ...
+    persp_text = insertText(persp_text, f(i).c+[f(i).r,0], res(i), FontSize=18,TextBoxColor='y', ...
     BoxOpacity=0.4,TextColor="white");
     %figure
     %imshow(outer_ring)
