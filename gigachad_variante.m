@@ -124,11 +124,14 @@ for i = 1:length(radii)
     outer_ring = persp.*repmat(uint8(msk_ring), [1 1 3]);
     inner_circle = persp.*repmat(uint8(msk_inner), [1 1 3]);
 
+    % lightness, chromaticity red-green, chromaticity blue-yellow
     lab_ring = rgb2lab(outer_ring);
     lab_circle = rgb2lab(inner_circle);
 
     f(i).b_ring = mean2(lab_ring(:,:,3));
     f(i).b_circle = mean2(lab_circle(:,:,3));
+    f(i).a_ring = mean2(lab_ring(:,:,2));
+    f(i).a_circle = mean2(lab_circle(:,:,2));
 
     if abs(f(i).b_circle - f(i).b_ring) < 0.015
         b_avg = b_avg + f(i).b_circle;
@@ -150,8 +153,9 @@ end
 for i = 1:length(radii)
     
     % debug only
-    fprintf("b-Ring: %f, b-Kreis innen: %f, Radius Münze: %f\n", f(i).b_ring, f(i).b_circle, f(i).r)
-    
+    fprintf("a-Ring: %f, a-Kreis: %f, b-Ring: %f, b-Kreis: %f, Radius: %f\n", ...
+        f(i).a_ring, f(i).a_circle, f(i).b_ring, f(i).b_circle, f(i).r)
+
     if (f(i).b_circle - f(i).b_ring) > 0.015 && f(i).r > lower(7) % 2 Euro: diff in color & größer als 50 cent lower
         res(i) = 2.0;
     elseif (f(i).b_circle - f(i).b_ring < -0.015) && f(i).r > lower(5) && f(i).r < upper(7) % 1 Euro
