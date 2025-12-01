@@ -4,7 +4,7 @@ addpath(genpath('Vorlagen/MatlabFns/Projective'));
 
 dina4 = [210,297];
 
-img = imread("images/coins6.jpeg");
+img = imread("images/coins5.jpeg");
 gray = rgb2gray(img);
 
 edges = edge(gray, 'canny', [0.02, 0.3]);
@@ -19,9 +19,6 @@ tolerance = 0.02;
 largest_area = 0;
 l_poly = 0;
 
-figure
-imshow(img);
-hold on;
 for k = 1:length(boundaries)
     boundary = boundaries{k};
     p_reduced = reducepoly(boundary,tolerance);
@@ -41,9 +38,11 @@ end
 
 if largest_area < (size(img,1) * size(img,2)) / 4
     error("Unable to recognize Sheet correctly! Use better illumination or" + ...
-        "improve sheet location!")
+        " improve sheet location!")
 end
-
+figure
+imshow(img);
+hold on;
 plot(l_poly(:,2), l_poly(:,1), 'r', 'LineWidth', 2)
 hold off
 
@@ -87,6 +86,9 @@ imshow(persp)
 gray_p = rgb2gray(persp);
 
 [centers,radii] = imfindcircles(gray_p,[25 50],ObjectPolarity="dark", Sensitivity=0.9);
+[sorted_radii, sort_idx] = sort(radii, 'descend');
+sorted_centers = centers(sort_idx, :);
+
 masks = circles2mask(centers, radii, imsize);
 persp_masked = persp.*repmat(uint8(masks),[1 1 3]);
 
@@ -99,7 +101,6 @@ radiusse = [16.25, 18.75, 19.75, 21.25, 22.25, 23.25, 24.25, 25.75].*3./2;
 lower = radiusse - [2, diff(radiusse)/2];
 
 scale_fac = 1.0;
-sorted_radii = sort(radii,'descend');
 if sorted_radii(1) > lower(8)
     scale_fac = sorted_radii(1)/radiusse(8);
     radiusse = radiusse.*scale_fac;
