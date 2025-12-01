@@ -4,7 +4,7 @@ addpath(genpath('Vorlagen/MatlabFns/Projective'));
 
 dina4 = [210,297];
 
-img = imread("images/coins3.jpeg");
+img = imread("images/coins5.jpeg");
 gray = rgb2gray(img);
 
 edges = edge(gray, 'canny', [0.02, 0.3]);
