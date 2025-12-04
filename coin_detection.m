@@ -4,15 +4,14 @@ addpath(genpath('Vorlagen/MatlabFns/Projective'));
 
 dina4 = [210,297];
 
-img = imread("images/coins5.jpeg");
+% 2 -> no rectification, 3,8 -> not all coins properly detected
+img = imread("images/coins7.jpeg");
 gray = rgb2gray(img);
 
 edges = edge(gray, 'canny', [0.02, 0.3]);
 edges = imdilate(edges, strel('line', 10, 5));
 
-figure
-imshow(edges)
-
+% detect bounds
 boundaries = bwboundaries(edges);
 
 tolerance = 0.02;
@@ -36,11 +35,17 @@ for k = 1:length(boundaries)
     %plot(p_reduced(:,2), p_reduced(:,1), 'b', 'LineWidth', 2);
 end
 
+% throw error if area poly < imsize/4
 if largest_area < (size(img,1) * size(img,2)) / 4
     error("Unable to recognize Sheet correctly! Use better illumination or" + ...
         " improve sheet location!")
 end
 figure
+tiledlayout(1,2)
+nexttile
+imshow(edges)
+
+nexttile
 imshow(img);
 hold on;
 plot(l_poly(:,2), l_poly(:,1), 'r', 'LineWidth', 2)
@@ -48,13 +53,15 @@ hold off
 
 %% perspective transform
 
-% no nono
+% with homography
 % x1 = [l_poly(1,2), l_poly(2,2), l_poly(3,2), l_poly(4,2)
 %       l_poly(1,1), l_poly(2,1), l_poly(3,1), l_poly(4,1)
 %       1                 1            1            1];
 % x2 = [10 imsize(1) imsize(1)    10
 %       10    10      imsize(2) imsize(2)
 %       1    1        1          1];
+
+% target size
 imsize = dina4*3;
 len1 = norm(l_poly(1,:)-l_poly(2,:));
 len2 = norm(l_poly(2,:)-l_poly(3,:));
@@ -77,13 +84,17 @@ outputView = imref2d([imsize(1), imsize(2)], ...
 persp = imwarp(img, tform, "OutputView", outputView);
 %persp_resized = imresize(persp, dina4, 'Method','lanczos3');
 
-figure
-imshow(persp)
-
 
 %% detect coins
+figure
+tiledlayout(1,2)
+nexttile
+imshow(persp)
 
 gray_p = rgb2gray(persp);
+
+% brightn_diff = reshape([162.4 181.9 203.3], [1 1 3]) - mean(persp, [1 2]);
+% persp = persp + uint8(round(brightn_diff*0.5));
 
 [centers,radii] = imfindcircles(gray_p,[25 50],ObjectPolarity="dark", Sensitivity=0.9);
 [sorted_radii, sort_idx] = sort(radii, 'descend');
@@ -151,10 +162,6 @@ elseif b_std > 0.01
 end
 
 for i = 1:length(radii)
-    
-    % debug only
-    fprintf("a-Ring: %f, a-Kreis: %f, b-Ring: %f, b-Kreis: %f, Radius: %f\n", ...
-        f(i).a_ring, f(i).a_circle, f(i).b_ring, f(i).b_circle, f(i).r)
 
     if (f(i).b_circle - f(i).b_ring) > 0.015 && f(i).r > lower(7) % 2 Euro: diff in color & größer als 50 cent lower
         res(i) = 2.0;
@@ -177,7 +184,10 @@ for i = 1:length(radii)
             res(i) = 0.01;
         end
     end
-    
+
+    fprintf("a-Ring: %f, a-Kreis: %f, b-Ring: %f, b-Kreis: %f, Radius: %f, c: %f\n", ...
+        f(i).a_ring, f(i).a_circle, f(i).b_ring, f(i).b_circle, f(i).r, res(i))
+
     persp_text = insertText(persp_text, f(i).c+[f(i).r,0], res(i), FontSize=18,TextBoxColor='y', ...
     BoxOpacity=0.4,TextColor="white");
     %figure
@@ -185,7 +195,7 @@ for i = 1:length(radii)
     
 end
 
-figure
+nexttile
 imshow(persp_text)
 
 h = viscircles(centers,radii);
