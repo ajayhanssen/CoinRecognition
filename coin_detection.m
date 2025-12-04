@@ -5,7 +5,7 @@ addpath(genpath('Vorlagen/MatlabFns/Projective'));
 dina4 = [210,297];
 
 % 2 -> no rectification, 3,8 -> not all coins properly detected
-img = imread("images/coins7.jpeg");
+img = imread("images/coins8.jpeg");
 gray = rgb2gray(img);
 
 edges = edge(gray, 'canny', [0.02, 0.3]);
@@ -100,9 +100,6 @@ gray_p = rgb2gray(persp);
 [sorted_radii, sort_idx] = sort(radii, 'descend');
 sorted_centers = centers(sort_idx, :);
 
-masks = circles2mask(centers, radii, imsize);
-persp_masked = persp.*repmat(uint8(masks),[1 1 3]);
-
 res = zeros(length(radii),1);
 persp_text = persp;
 
@@ -151,7 +148,7 @@ for i = 1:length(radii)
     end
 
 end
-b_avg = b_avg/num_considered % durchs. b-wert des in kreises
+b_avg = b_avg/num_considered % durchs. b-wert der inneren kreise
 b_std = std(b_std)
 
 b_gw = 0.03;
