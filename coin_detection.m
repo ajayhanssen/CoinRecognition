@@ -5,7 +5,7 @@ addpath(genpath('Vorlagen/MatlabFns/Projective'));
 dina4 = [210,297];
 
 % 2 -> no rectification, 3,8 -> not all coins properly detected
-img = imread("images/coins8.jpeg");
+img = imread("images/coins7.jpeg");
 gray = rgb2gray(img);
 
 edges = edge(gray, 'canny', [0.02, 0.3]);
@@ -70,16 +70,16 @@ if len1 < len2
 end
 
 src = [l_poly(1:4,2), l_poly(1:4,1)];
-dst = [10,10;
-       imsize(2), 10;
+dst = [0,0;
+       imsize(2), 0;
        imsize(2), imsize(1);
-       10, imsize(1)];
+       0, imsize(1)];
 
 tform = fitgeotrans(src, dst, "projective");
 
 outputView = imref2d([imsize(1), imsize(2)], ...
-                     [10, imsize(2)], ...
-                     [10, imsize(1)]);
+                     [0, imsize(2)], ...
+                     [0, imsize(1)]);
 
 persp = imwarp(img, tform, "OutputView", outputView);
 %persp_resized = imresize(persp, dina4, 'Method','lanczos3');
